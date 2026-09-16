@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://kaikomziu.github.io/inspector-deluxe/sitemap.xml
