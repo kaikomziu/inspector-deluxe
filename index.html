@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>INSPECTOR DELUXE - 書類審査官</title>
+<meta name="description" content="申請書と身分証を照合し、規則に従って承認・却下スタンプを押す書類審査シミュレーター。クリッカー要素なしの純粋な作業ゲー。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- タイトル画面 -->
+<div id="title-screen" class="screen">
+  <div class="title-wrap">
+    <div class="stamp-deco">承認</div>
+    <h1>INSPECTOR DELUXE</h1>
+    <p class="subtitle">中央書類管理局 審査官業務システム</p>
+    <p class="flavor">申請書と身分証を照合し、規則通りに<br>承認・却下のスタンプを押す仕事です。</p>
+    <div class="best-score">最高記録：<span id="best-score-val">0</span>点 / 到達DAY <span id="best-day-val">1</span></div>
+    <button id="start-btn" class="btn-main">出勤する</button>
+    <button id="howto-btn" class="btn-sub">仕事内容を確認</button>
+  </div>
+</div>
+
+<!-- 遊び方画面 -->
+<div id="howto-screen" class="screen hidden">
+  <div class="howto-wrap">
+    <h2>仕事内容</h2>
+    <ul class="howto-list">
+      <li>「申請書」と「身分証明書」を見比べて、<b>本日の規則</b>にすべて合格していれば <b class="ok">承認</b>、一つでも違反していれば <b class="ng">却下</b> スタンプを押してください。</li>
+      <li>規則は日を追うごとに増えていきます。前日までの規則は継続して有効です。</li>
+      <li>制限時間内にできるだけ多くの書類を、正確に処理するのが目標です。</li>
+      <li>ミスをしても即クビにはなりません。ただし上司の評価とスコアに響きます。</li>
+    </ul>
+    <button id="back-title-btn" class="btn-main">戻る</button>
+  </div>
+</div>
+
+<!-- 1日の開始画面 -->
+<div id="day-intro-screen" class="screen hidden">
+  <div class="day-intro-wrap">
+    <h2>DAY <span id="intro-day-num">1</span></h2>
+    <div id="intro-new-rule" class="intro-new-rule hidden">
+      <div class="intro-new-rule-label">本日追加された規則</div>
+      <div id="intro-new-rule-text" class="intro-new-rule-text"></div>
+    </div>
+    <div class="rule-recap">
+      <div class="rule-recap-label">現在有効な規則一覧</div>
+      <ul id="intro-rule-list" class="rule-list"></ul>
+    </div>
+    <div id="intro-seal-box" class="intro-seal-box hidden">
+      <div>本日の公式印影</div>
+      <div id="intro-official-seal" class="seal-display"></div>
+    </div>
+    <div class="intro-stats">
+      制限時間 <b id="intro-time-limit">60</b>秒 ／ ノルマ <b id="intro-quota">8</b>件
+    </div>
+    <button id="day-start-btn" class="btn-main">審査開始</button>
+  </div>
+</div>
+
+<!-- ゲーム画面 -->
+<div id="game-screen" class="screen hidden">
+  <div class="hud">
+    <div class="hud-item">DAY <span id="hud-day">1</span></div>
+    <div class="hud-item hud-timer">
+      <div class="timer-bar-bg"><div id="timer-bar" class="timer-bar-fill"></div></div>
+      <span id="hud-time-num">60</span>s
+    </div>
+    <div class="hud-item">処理 <span id="hud-processed">0</span>/<span id="hud-quota">8</span></div>
+    <div class="hud-item">スコア <span id="hud-score">0</span></div>
+    <div class="hud-item">ミス <span id="hud-mistakes">0</span></div>
+  </div>
+
+  <div class="work-area">
+    <aside class="rules-sidebar">
+      <div class="rules-sidebar-title">本日の規則</div>
+      <ul id="active-rule-list" class="rule-list small"></ul>
+      <div id="official-seal-sidebar" class="official-seal-sidebar hidden">
+        <div class="official-seal-sidebar-label">公式印影</div>
+        <div id="sidebar-official-seal" class="seal-display small"></div>
+      </div>
+    </aside>
+
+    <main class="desk">
+      <div class="documents">
+        <section class="doc-card" id="app-card">
+          <h3>申請書</h3>
+          <div class="doc-row"><span class="doc-label">氏名</span><span id="app-name" class="doc-value"></span></div>
+          <div class="doc-row doc-photo-row">
+            <span class="doc-label">写真</span>
+            <div id="app-photo" class="avatar-slot"></div>
+          </div>
+          <div class="doc-row"><span class="doc-label">署名</span><span class="signature">✎ ﾘﾆｱ署名済</span></div>
+        </section>
+
+        <section class="doc-card" id="id-card">
+          <h3>身分証明書</h3>
+          <div class="doc-row"><span class="doc-label">氏名</span><span id="id-name" class="doc-value"></span></div>
+          <div class="doc-row"><span class="doc-label">生年月日</span><span id="id-birth" class="doc-value"></span></div>
+          <div class="doc-row"><span class="doc-label">有効期限</span><span id="id-expiry" class="doc-value"></span></div>
+          <div class="doc-row"><span class="doc-label">番号</span><span id="id-number" class="doc-value mono"></span></div>
+          <div class="doc-row doc-photo-row">
+            <span class="doc-label">写真</span>
+            <div id="id-photo" class="avatar-slot"></div>
+          </div>
+          <div class="doc-row doc-photo-row">
+            <span class="doc-label">印影</span>
+            <div id="id-seal" class="seal-display small"></div>
+          </div>
+        </section>
+      </div>
+
+      <div id="feedback-banner" class="feedback-banner hidden"></div>
+
+      <div class="stamp-controls">
+        <button id="approve-btn" class="stamp-btn approve">承認</button>
+        <button id="deny-btn" class="stamp-btn deny">却下</button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- 1日終了サマリー -->
+<div id="summary-screen" class="screen hidden">
+  <div class="summary-wrap">
+    <h2>DAY <span id="summary-day-num">1</span> 終了</h2>
+    <div id="summary-boss-comment" class="boss-comment"></div>
+    <div class="summary-stats">
+      <div class="summary-row"><span>処理件数</span><span id="summary-processed"></span></div>
+      <div class="summary-row"><span>正解数</span><span id="summary-correct"></span></div>
+      <div class="summary-row"><span>ミス数</span><span id="summary-mistakes"></span></div>
+      <div class="summary-row"><span>正答率</span><span id="summary-accuracy"></span></div>
+      <div class="summary-row highlight"><span>本日のスコア</span><span id="summary-score"></span></div>
+      <div class="summary-row highlight"><span>累計スコア</span><span id="summary-total-score"></span></div>
+    </div>
+    <button id="next-day-btn" class="btn-main">翌日へ</button>
+    <button id="quit-btn" class="btn-sub">本日で退勤する</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
