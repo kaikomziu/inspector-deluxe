@@ -23,7 +23,9 @@
     <p class="subtitle">中央書類管理局 審査官業務システム</p>
     <p class="flavor">申請書と身分証を照合し、規則通りに<br>承認・却下のスタンプを押す仕事です。</p>
     <div class="best-score">最高記録：<span id="best-score-val">0</span>点 / 到達DAY <span id="best-day-val">1</span></div>
-    <button id="start-btn" class="btn-main">出勤する</button>
+    <button id="continue-btn" class="btn-main hidden"></button>
+    <button id="start-btn" class="btn-main">通常モードで出勤</button>
+    <button id="endless-btn" class="btn-sub">エンドレスモードで出勤</button>
     <button id="howto-btn" class="btn-sub">仕事内容を確認</button>
   </div>
 </div>
@@ -37,6 +39,8 @@
       <li>規則は日を追うごとに増えていきます。前日までの規則は継続して有効です。</li>
       <li>制限時間内にできるだけ多くの書類を、正確に処理するのが目標です。</li>
       <li>ミスをしても即クビにはなりません。ただし上司の評価とスコアに響きます。</li>
+      <li>通常モードはDAY6まで。クリア後は「終了」か「エンドレスモード」を選べます。エンドレスモードは全ての規則が有効な状態から始まり、日を追うごとに制限時間が短くなっていきます。</li>
+      <li>各DAYの終わりに自動で進行状況が保存されます。タイトル画面の「続きから」でいつでも再開できます。</li>
     </ul>
     <button id="back-title-btn" class="btn-main">戻る</button>
   </div>

@@ -216,11 +216,15 @@ function generateDocument(activeRuleIds, officialSeal) {
 
 const BEST_SCORE_KEY = "inspectorDeluxe_bestScore";
 const BEST_DAY_KEY = "inspectorDeluxe_bestDay";
+const SAVE_KEY = "inspectorDeluxe_save";
+const NORMAL_LAST_DAY = 6;
 
 const game = {
   day: 1,
+  mode: "normal", // "normal" | "endless"
   totalScore: 0,
   officialSeal: null,
+  pendingEnding: false,
 };
 
 let dayState = null;
@@ -244,6 +248,24 @@ function saveBestIfBetter(score, day) {
   const best = loadBest();
   if (score > best.score) localStorage.setItem(BEST_SCORE_KEY, String(score));
   if (day > best.day) localStorage.setItem(BEST_DAY_KEY, String(day));
+}
+
+function saveProgress(day) {
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ day, totalScore: game.totalScore, mode: game.mode }));
+}
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data.day !== "number") return null;
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+function clearProgress() {
+  localStorage.removeItem(SAVE_KEY);
 }
 
 /* ========================= DOM参照 ========================= */
@@ -299,18 +321,65 @@ function flagViolatedFields(doc) {
 
 /* ========================= フロー制御 ========================= */
 
+function modeLabel(mode) { return mode === "endless" ? "エンドレス" : "通常"; }
+
 function goTitle() {
   const best = loadBest();
   el("best-score-val").textContent = best.score;
   el("best-day-val").textContent = best.day;
+
+  const save = loadProgress();
+  const continueBtn = el("continue-btn");
+  if (save) {
+    continueBtn.classList.remove("hidden");
+    continueBtn.textContent = `続きから(DAY${save.day}・${modeLabel(save.mode)}モード)`;
+  } else {
+    continueBtn.classList.add("hidden");
+  }
+
   showScreen("title");
 }
 
-function startGame() {
-  game.day = 1;
+function resetGameState(mode, startDayNum) {
+  game.mode = mode;
+  game.day = startDayNum;
   game.totalScore = 0;
   game.officialSeal = null;
-  startDay(1);
+  game.pendingEnding = false;
+}
+
+function startNewGame(mode) {
+  const save = loadProgress();
+  if (save && !confirm(`保存中の記録(DAY${save.day}・${modeLabel(save.mode)}モード)があります。新しく始めると上書きされますが、よろしいですか？`)) {
+    return;
+  }
+  clearProgress();
+  resetGameState(mode, mode === "endless" ? NORMAL_LAST_DAY + 1 : 1);
+  startDay(game.day);
+}
+
+function resumeGame() {
+  const save = loadProgress();
+  if (!save) return;
+  game.mode = save.mode;
+  game.day = save.day;
+  game.totalScore = save.totalScore;
+  game.officialSeal = null;
+  game.pendingEnding = false;
+  startDay(game.day);
+}
+
+function chooseEndlessContinue() {
+  game.mode = "endless";
+  game.day = NORMAL_LAST_DAY + 1;
+  game.pendingEnding = false;
+  saveProgress(game.day);
+  startDay(game.day);
+}
+
+function finishNormalRun() {
+  clearProgress();
+  goTitle();
 }
 
 function startDay(day) {
@@ -319,7 +388,7 @@ function startDay(day) {
   const params = dayParams(day);
   if (day >= 4) game.officialSeal = randomSeal();
 
-  el("intro-day-num").textContent = day;
+  el("intro-day-num").textContent = day + (game.mode === "endless" ? " (エンドレス)" : "");
   const newRule = RULES.find(r => r.day === day);
   const introBox = el("intro-new-rule");
   if (newRule) {
@@ -364,7 +433,7 @@ function beginDayPlay() {
     timerId: null,
   };
 
-  el("hud-day").textContent = day;
+  el("hud-day").textContent = day + (game.mode === "endless" ? "(EX)" : "");
   el("hud-quota").textContent = params.quota;
   el("hud-processed").textContent = 0;
   el("hud-score").textContent = 0;
@@ -471,8 +540,13 @@ function endDay() {
   const accuracy = dayState.processed > 0 ? Math.round((dayState.correct / dayState.processed) * 100) : 0;
   game.totalScore += dayState.score;
 
-  el("summary-day-num").textContent = game.day;
-  el("summary-boss-comment").textContent = bossComment(accuracy, dayState.mistakes);
+  const isEnding = game.mode === "normal" && game.day === NORMAL_LAST_DAY;
+  game.pendingEnding = isEnding;
+
+  el("summary-day-num").textContent = game.day + (game.mode === "endless" ? " (エンドレス)" : "");
+  let comment = bossComment(accuracy, dayState.mistakes);
+  if (isEnding) comment += " ひとまず通常業務はここまでだ。このまま終えるか、エンドレスモードでさらに続けるか選んでくれ。";
+  el("summary-boss-comment").textContent = comment;
   el("summary-processed").textContent = dayState.processed;
   el("summary-correct").textContent = dayState.correct;
   el("summary-mistakes").textContent = dayState.mistakes;
@@ -481,6 +555,17 @@ function endDay() {
   el("summary-total-score").textContent = game.totalScore;
 
   saveBestIfBetter(game.totalScore, game.day);
+
+  if (isEnding) {
+    clearProgress();
+    el("next-day-btn").textContent = "エンドレスモードに挑戦";
+    el("quit-btn").textContent = "終了して退勤する";
+  } else {
+    saveProgress(game.day + 1);
+    el("next-day-btn").textContent = "翌日へ";
+    el("quit-btn").textContent = "本日で退勤する";
+  }
+
   showScreen("summary");
 }
 
@@ -490,14 +575,22 @@ function nextDay() {
 
 /* ========================= イベント登録 ========================= */
 
-el("start-btn").addEventListener("click", startGame);
+el("start-btn").addEventListener("click", () => startNewGame("normal"));
+el("endless-btn").addEventListener("click", () => startNewGame("endless"));
+el("continue-btn").addEventListener("click", resumeGame);
 el("howto-btn").addEventListener("click", () => showScreen("howto"));
 el("back-title-btn").addEventListener("click", goTitle);
 el("day-start-btn").addEventListener("click", beginDayPlay);
 el("approve-btn").addEventListener("click", () => handleStamp("approve"));
 el("deny-btn").addEventListener("click", () => handleStamp("deny"));
-el("next-day-btn").addEventListener("click", nextDay);
-el("quit-btn").addEventListener("click", goTitle);
+el("next-day-btn").addEventListener("click", () => {
+  if (game.pendingEnding) chooseEndlessContinue();
+  else nextDay();
+});
+el("quit-btn").addEventListener("click", () => {
+  if (game.pendingEnding) finishNormalRun();
+  else goTitle();
+});
 
 document.addEventListener("keydown", (e) => {
   if (screens.game.classList.contains("hidden")) return;
